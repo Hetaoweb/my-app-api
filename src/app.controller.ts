@@ -7,6 +7,6 @@ export class AppController {
 
   @Get()
   root(): string {
-    return this.appService.root();
+    return 'holle';
   }
 }
