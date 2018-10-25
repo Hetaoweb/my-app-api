@@ -1,30 +1,44 @@
-import { Controller, Res, Body, Post, UsePipes } from '@nestjs/common';
-import { AppService } from 'app.service';
-import { CreateLoginDto } from './login.dto';
+import { Controller, Res, Body, Post, UsePipes, HttpException, HttpStatus } from '@nestjs/common';
 import { ValidationPipe } from 'validation/validation.pipe';
+import { LoginService } from './login.service';
+import { getManager, MongoEntityManager, Connection } from 'typeorm';
+import { CreateLoginDto } from './interfaces/login.dto';
 
 @Controller('login')
 export class LoginController {
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly loginService: LoginService, private readonly connection: Connection) { }
 
   @Post()
   @UsePipes(ValidationPipe)
-  goLogin(@Res() ResData, @Body() BodyData: CreateLoginDto) {
-    const change = (err, res) => {
-      if (res[0].password !== BodyData.password) {
-        ResData.status(400).json({
-          status: 400,
-          type: 'error',
-          tips: '密码错误！',
-        });
+  async getToken(@Res() Response, @Body() BodyData: CreateLoginDto): Promise<any> {
+    this.loginService.findAll(BodyData.email).then(res => {
+      const response_data = res;
+      if (!response_data.length && response_data.email) {
+        Response.status(403).json(
+          {
+            type: 'error',
+            tips: '邮箱输入错误，请重新输入！',
+          },
+        );
+        return;
+      } else if (BodyData.password !== response_data[0].password) {
+        Response.status(403).json(
+          {
+            type: 'error',
+            tips: '密码错误，请重新输入！',
+          },
+        );
         return;
       }
-      ResData.status(200).json({
-        status: 200,
-        type: 'success',
-        data: res,
+      this.loginService.createToken(res[0].vip_id).then((data) => {
+        Response.status(HttpStatus.OK).json(
+          {
+            type: 'success',
+            tips: '登陆成功',
+            token: data,
+          },
+        );
       });
-    };
-    this.appService.handleMysql(`SELECT * from user WHERE email="${BodyData.email}"`, change);
+    });
   }
 }
