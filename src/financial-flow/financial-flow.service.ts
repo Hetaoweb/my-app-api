@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { EntityManager, getConnection } from 'typeorm';
 import { FinancialFlow } from 'entity/financialFlow.entity';
-import moment = require('moment');
 
 @Injectable()
 export class FinancialFlowService {
@@ -36,15 +35,32 @@ export class FinancialFlowService {
   }
 
   async setFinancialFlow(data) {
-    await getConnection().createQueryBuilder().insert().into(FinancialFlow).values(
-      data,
-    ).execute();
+    return await getConnection()
+      .createQueryBuilder()
+        .insert()
+          .into(FinancialFlow)
+            .values(data)
+              .execute();
   }
 
   async getTotalMoney(date) {
-    return await this.entityManager.query(`select
-      ifnull(sum(money), 0) as totalMoney
-      FROM financial_flow
-      WHERE create_date>"${date}-00" and create_date<"${date}-31"`);
+    return await this.entityManager
+      .query(`select
+              ifnull(sum(money), 0) as totalMoney
+              FROM financial_flow
+              WHERE create_date>"${date}-00" and create_date<"${date}-31" and type_id = 0`);
+  }
+
+  async editTFinancialFlow(data) {
+    return await getConnection()
+      .createQueryBuilder()
+        .update(FinancialFlow)
+          .set(data)
+            .where('id = :id', { id: data.id})
+              .execute();
+  }
+
+  async inquireFiancialFlow(ids: number) {
+    return await this.entityManager.getRepository(FinancialFlow).find({where: {id: ids}});
   }
 }
